@@ -1,5 +1,3 @@
-import gleam/dynamic
-
 pub const data_dir = "./data"
 
 pub type Account {
@@ -40,18 +38,6 @@ pub fn account_from_string(string: String) -> Result(Account, Nil) {
   }
 }
 
-pub fn account_from_dynamic(dy) {
-  case dynamic.string(dy) {
-    Ok(account_str) ->
-      case account_from_string(account_str) {
-        Ok(account) -> Ok(account)
-        Error(Nil) ->
-          Error([dynamic.DecodeError("account string", account_str, [])])
-      }
-    Error(e) -> Error(e)
-  }
-}
-
 pub type TransactionCategory {
   Food(subcategory: FoodSubcategory)
   Health(subcategory: HealthSubcategory)
@@ -65,6 +51,7 @@ pub type TransactionCategory {
   Professional(subcategory: ProfessionalSubcategory)
   Giving(subcategory: GivingSubcategory)
   Income(subcategory: IncomeSubcategory)
+  Uncategorized
 }
 
 pub type FoodSubcategory {
@@ -162,7 +149,7 @@ pub fn transaction_category_to_string(category: TransactionCategory) {
     Health(Hygiene) -> #("Health", "Hygiene")
     Utility(Electricity) -> #("Utility", "Electricity")
     Utility(Water) -> #("Utility", "Water")
-    Utility(GasHome) -> #("Utility", "Gas Home")
+    Utility(GasHome) -> #("Utility", "Gas (Home)")
     Utility(Trash) -> #("Utility", "Trash")
     Utility(Sewer) -> #("Utility", "Sewer")
     Utility(Internet) -> #("Utility", "Internet")
@@ -171,7 +158,7 @@ pub fn transaction_category_to_string(category: TransactionCategory) {
     Housing(HomeInsurance) -> #("Housing", "Home Insurance")
     Housing(HomeUpgrade) -> #("Housing", "Home Upgrade")
     Housing(HomeMaintenance) -> #("Housing", "Home Maintenance")
-    Transportation(GasCar) -> #("Transportation", "Gas Car")
+    Transportation(GasCar) -> #("Transportation", "Gas (Car)")
     Transportation(CarInsurance) -> #("Transportation", "Car Insurance")
     Transportation(LicensesAndRegistration) -> #(
       "Transportation",
@@ -205,6 +192,7 @@ pub fn transaction_category_to_string(category: TransactionCategory) {
     Income(Salary) -> #("Income", "Salary")
     Income(Bonus) -> #("Income", "Bonus")
     Income(OneTimeIncome) -> #("Income", "One Time Income")
+    Uncategorized -> #("Uncategorized", "Uncategorized")
   }
 }
 
@@ -223,7 +211,7 @@ pub fn transaction_category_from_string(
     "Health", "Hygiene" -> Ok(Health(Hygiene))
     "Utility", "Electricity" -> Ok(Utility(Electricity))
     "Utility", "Water" -> Ok(Utility(Water))
-    "Utility", "Gas Home" -> Ok(Utility(GasHome))
+    "Utility", "Gas (Home)" -> Ok(Utility(GasHome))
     "Utility", "Trash" -> Ok(Utility(Trash))
     "Utility", "Sewer" -> Ok(Utility(Sewer))
     "Utility", "Internet" -> Ok(Utility(Internet))
@@ -232,7 +220,7 @@ pub fn transaction_category_from_string(
     "Housing", "Home Insurance" -> Ok(Housing(HomeInsurance))
     "Housing", "Home Upgrade" -> Ok(Housing(HomeUpgrade))
     "Housing", "Home Maintenance" -> Ok(Housing(HomeMaintenance))
-    "Transportation", "Gas Car" -> Ok(Transportation(GasCar))
+    "Transportation", "Gas (Car)" -> Ok(Transportation(GasCar))
     "Transportation", "Car Insurance" -> Ok(Transportation(CarInsurance))
     "Transportation", "Licenses and Registration" ->
       Ok(Transportation(LicensesAndRegistration))
@@ -263,6 +251,30 @@ pub fn transaction_category_from_string(
     "Income", "Salary" -> Ok(Income(Salary))
     "Income", "Bonus" -> Ok(Income(Bonus))
     "Income", "One Time Income" -> Ok(Income(OneTimeIncome))
+    "Uncategorized", "Uncategorized" -> Ok(Uncategorized)
     _, _ -> Error(Nil)
+  }
+}
+
+pub type TransactionType {
+  Expense
+  SetAside
+  External
+}
+
+pub fn transaction_type_from_string(string) {
+  case string {
+    "Expense" -> Ok(Expense)
+    "Set Aside" -> Ok(SetAside)
+    "External" -> Ok(External)
+    _ -> Error(Nil)
+  }
+}
+
+pub fn transaction_type_to_string(transaction_type) {
+  case transaction_type {
+    Expense -> "Expense"
+    SetAside -> "Set Aside"
+    External -> "External"
   }
 }

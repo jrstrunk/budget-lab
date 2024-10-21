@@ -1,4 +1,5 @@
 import budget_lab/types
+import ext/dynamicx
 import ext/snagx
 import gleam/dynamic
 import gleam/float
@@ -17,9 +18,32 @@ pub type Transaction {
     description: String,
     amount: Float,
     category: types.TransactionCategory,
+    transaction_type: types.TransactionType,
     account: option.Option(types.Account),
     note: option.Option(String),
     active: Bool,
+  )
+}
+
+pub fn transaction_to_line(transaction: Transaction) {
+  let #(category, subcategory) =
+    types.transaction_category_to_string(transaction.category)
+
+  string.join(
+    [
+      datetime.to_string(transaction.date),
+      transaction.description,
+      float.to_string(transaction.amount),
+      category,
+      subcategory,
+      types.transaction_type_to_string(transaction.transaction_type),
+      case transaction.account {
+        option.Some(account) -> types.account_to_string(account)
+        option.None -> ""
+      },
+      option.unwrap(transaction.note, ""),
+    ],
+    ",",
   )
 }
 
@@ -46,6 +70,9 @@ pub fn insert_transaction(conn, transaction: Transaction) {
       float.to_string(transaction.amount),
       "'" <> category <> "'",
       "'" <> subcategory <> "'",
+      "'"
+        <> types.transaction_type_to_string(transaction.transaction_type)
+        <> "'",
       case transaction.account {
         option.Some(account) -> "'" <> types.account_to_string(account) <> "'"
         option.None -> "NULL"
@@ -97,6 +124,7 @@ type TransactionRaw {
     amount: Float,
     category: String,
     subcategory: String,
+    transaction_type: types.TransactionType,
     account: option.Option(types.Account),
     note: option.Option(String),
     active: Bool,
@@ -105,7 +133,7 @@ type TransactionRaw {
 
 fn transaction_decoder(row) {
   case
-    dynamic.decode9(
+    dynamicx.decode10(
       TransactionRaw,
       dynamic.element(0, dynamic.int),
       dynamic.element(1, datetime.from_dynamic_string),
@@ -113,9 +141,10 @@ fn transaction_decoder(row) {
       dynamic.element(3, dynamic.float),
       dynamic.element(4, dynamic.string),
       dynamic.element(5, dynamic.string),
-      dynamic.element(6, dynamic.optional(types.account_from_dynamic)),
-      dynamic.element(7, dynamic.optional(dynamic.string)),
-      dynamic.element(8, sqlight.decode_bool),
+      dynamic.element(6, dynamicx.transaction_type),
+      dynamic.element(7, dynamic.optional(dynamicx.account)),
+      dynamic.element(8, dynamic.optional(dynamic.string)),
+      dynamic.element(9, sqlight.decode_bool),
     )(row)
   {
     Ok(transaction_raw) -> {
@@ -132,6 +161,7 @@ fn transaction_decoder(row) {
             amount: transaction_raw.amount,
             description: transaction_raw.description,
             category: cate,
+            transaction_type: transaction_raw.transaction_type,
             account: transaction_raw.account,
             note: transaction_raw.note,
             active: transaction_raw.active,
@@ -181,7 +211,9 @@ pub fn get_all_manual_transactions(conn) {
     with: [],
     expecting: manual_transaction_decoder,
   )
-  |> snagx.from_error("Failed to get all transactions from transaction db ")
+  |> snagx.from_error(
+    "Failed to get all manual transactions from transaction db ",
+  )
 }
 
 const transactions_db = "transactions.db"
@@ -193,6 +225,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount REAL NOT NULL,
   category TEXT NOT NULL,
   subcategory TEXT NOT NULL,
+  transaction_type TEXT NOT NULL,
   account TEXT,
   note TEXT,
   active INTEGER NOT NULL
@@ -204,6 +237,7 @@ const transactions_columns = "
   amount,
   category,
   subcategory,
+  transaction_type,
   account,
   note,
   active
@@ -230,7 +264,7 @@ pub fn connect_to_transactions_db() {
   use conn <- result.map(
     sqlight.open("file:" <> transactions_db_path)
     |> snagx.from_error(
-      "Failed to connect to transactions db " <> transactions_db_path,
+      "Failed to connect to transactions db at " <> transactions_db_path,
     ),
   )
 
