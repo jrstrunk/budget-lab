@@ -9,7 +9,9 @@ import gleam/option
 import gleam/regex
 import gleam/result
 import gleam/string
+import gsv
 import simplifile
+import snag
 import sqlight
 import tempo/date
 import tempo/datetime
@@ -17,28 +19,39 @@ import tempo/offset
 import tempo/time
 
 pub fn ingest_csv(conn, csv) {
-  use categorizers <- result.map(get_transaction_categories(conn))
+  use categorizers <- result.try(get_transaction_categories(conn))
 
-  string.split(csv, "\n")
-  |> list.map(string.split(_, ","))
-  |> list.map(fn(row) {
+  use rows <- result.map(
+    gsv.to_lists(csv)
+    |> result.map_error(fn(e) {
+      snag.new(e) |> snag.layer("Failed to parse csv")
+    }),
+  )
+
+  list.map(rows, fn(row) {
     case row {
       [date, description, amount, ..] -> {
         use date <- result.try(date.parse_any(date))
-        use amount <- result.try(float.parse(amount))
+        use amount <- result.try(
+          amount |> string.replace("$", "") |> float.parse,
+        )
         let category = categorize(categorizers, description)
 
-        Ok(transactions.Transaction(
-          id: -1,
-          date: datetime.new(date, time.literal("00:00:00"), offset.local()),
-          amount: amount,
-          description: description,
-          category: category,
-          transaction_type: types.Expense,
-          account: option.None,
-          note: option.None,
-          active: True,
-        ))
+        case category {
+          types.Exclude -> Error(Nil)
+          _ ->
+            Ok(transactions.Transaction(
+              id: -1,
+              date: datetime.new(date, time.literal("00:00:00"), offset.local()),
+              amount: amount,
+              description: description,
+              category: category,
+              transaction_type: types.Expense,
+              account: option.None,
+              note: option.None,
+              active: True,
+            ))
+        }
       }
       _ -> Error(Nil)
     }
@@ -141,7 +154,7 @@ fn transaction_category_decoder(row) {
 
 const categories_db = "transaction_categories.db"
 
-pub fn connect_to_transactions_db() {
+pub fn connect_to_categories_db() {
   let _ = simplifile.create_directory_all(types.data_dir)
 
   let categories_db_path = types.data_dir <> "/" <> categories_db
@@ -159,7 +172,7 @@ pub fn connect_to_transactions_db() {
   conn
 }
 
-pub fn connect_to_transactions_test_db() {
+pub fn connect_to_categories_test_db() {
   let _ = simplifile.create_directory_all(types.data_dir)
 
   let categories_db_path = types.data_dir <> "/transaction_categories_test.db"

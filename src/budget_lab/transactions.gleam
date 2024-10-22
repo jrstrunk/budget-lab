@@ -9,6 +9,7 @@ import gleam/string
 import simplifile
 import sqlight
 import tempo
+import tempo/date
 import tempo/datetime
 
 pub type Transaction {
@@ -29,22 +30,19 @@ pub fn transaction_to_line(transaction: Transaction) {
   let #(category, subcategory) =
     types.transaction_category_to_string(transaction.category)
 
-  string.join(
-    [
-      datetime.to_string(transaction.date),
-      transaction.description,
-      float.to_string(transaction.amount),
-      category,
-      subcategory,
-      types.transaction_type_to_string(transaction.transaction_type),
-      case transaction.account {
-        option.Some(account) -> types.account_to_string(account)
-        option.None -> ""
-      },
-      option.unwrap(transaction.note, ""),
-    ],
-    ",",
-  )
+  [
+    transaction.date |> datetime.get_date |> date.to_string,
+    transaction.description,
+    float.to_string(transaction.amount),
+    category,
+    subcategory,
+    types.transaction_type_to_string(transaction.transaction_type),
+    case transaction.account {
+      option.Some(account) -> types.account_to_string(account)
+      option.None -> ""
+    },
+    option.unwrap(transaction.note, ""),
+  ]
 }
 
 pub type ManualTransaction {
@@ -228,7 +226,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   transaction_type TEXT NOT NULL,
   account TEXT,
   note TEXT,
-  active INTEGER NOT NULL
+  active INTEGER NOT NULL,
+  PRIMARY KEY (date, description, amount)
 )"
 
 const transactions_columns = "

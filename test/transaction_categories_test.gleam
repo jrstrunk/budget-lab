@@ -10,7 +10,7 @@ pub fn main() {
 }
 
 pub fn insert_transaction_categories_round_trip_test() {
-  let conn = transaction_categories.connect_to_transactions_test_db()
+  let conn = transaction_categories.connect_to_categories_test_db()
 
   let assert Ok(Nil) =
     transaction_categories.add_transaction_category(
@@ -43,7 +43,7 @@ pub fn insert_transaction_categories_round_trip_test() {
 }
 
 pub fn insert_no_duplicates_test() {
-  let conn = transaction_categories.connect_to_transactions_test_db()
+  let conn = transaction_categories.connect_to_categories_test_db()
 
   let assert Ok(Nil) =
     transaction_categories.add_transaction_category(

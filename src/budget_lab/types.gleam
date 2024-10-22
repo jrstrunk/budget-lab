@@ -46,12 +46,13 @@ pub type TransactionCategory {
   Transportation(subcategory: TransportationSubcategory)
   Discretionary(subcategory: DiscretionarySubcategory)
   Education(subcategory: EducationSubcategory)
-  Baby(subcategory: BabySubcategory)
+  Dependent(subcategory: DependentSubcategory)
   Event(subcategory: EventSubcategory)
   Professional(subcategory: ProfessionalSubcategory)
   Giving(subcategory: GivingSubcategory)
   Income(subcategory: IncomeSubcategory)
   Uncategorized
+  Exclude
 }
 
 pub type FoodSubcategory {
@@ -103,7 +104,7 @@ pub type EducationSubcategory {
   StudentDebt
 }
 
-pub type BabySubcategory {
+pub type DependentSubcategory {
   BabyProduct
   BabyToiletry
   BabyDoctor
@@ -170,10 +171,10 @@ pub fn transaction_category_to_string(category: TransactionCategory) {
     Discretionary(Music) -> #("Discretionary", "Music")
     Discretionary(Entertainment) -> #("Discretionary", "Entertainment")
     Education(StudentDebt) -> #("Education", "Student Debt")
-    Baby(BabyProduct) -> #("Baby", "Baby Product")
-    Baby(BabyToiletry) -> #("Baby", "Baby Toiletry")
-    Baby(BabyDoctor) -> #("Baby", "Baby Doctor")
-    Baby(BabyShopping) -> #("Baby", "Baby Shopping")
+    Dependent(BabyProduct) -> #("Dependent", "Baby Product")
+    Dependent(BabyToiletry) -> #("Dependent", "Baby Toiletry")
+    Dependent(BabyDoctor) -> #("Dependent", "Baby Doctor")
+    Dependent(BabyShopping) -> #("Dependent", "Baby Shopping")
     Event(Vacation) -> #("Event", "Vacation")
     Event(Holiday) -> #("Event", "Holiday")
     Event(Traveling) -> #("Event", "Traveling")
@@ -193,6 +194,7 @@ pub fn transaction_category_to_string(category: TransactionCategory) {
     Income(Bonus) -> #("Income", "Bonus")
     Income(OneTimeIncome) -> #("Income", "One Time Income")
     Uncategorized -> #("Uncategorized", "Uncategorized")
+    Exclude -> #("Exclude", "Exclude")
   }
 }
 
@@ -230,10 +232,10 @@ pub fn transaction_category_from_string(
     "Discretionary", "Music" -> Ok(Discretionary(Music))
     "Discretionary", "Entertainment" -> Ok(Discretionary(Entertainment))
     "Education", "Student Debt" -> Ok(Education(StudentDebt))
-    "Baby", "Baby Product" -> Ok(Baby(BabyProduct))
-    "Baby", "Baby Toiletry" -> Ok(Baby(BabyToiletry))
-    "Baby", "Baby Doctor" -> Ok(Baby(BabyDoctor))
-    "Baby", "Baby Shopping" -> Ok(Baby(BabyShopping))
+    "Dependent", "Baby Product" -> Ok(Dependent(BabyProduct))
+    "Dependent", "Baby Toiletry" -> Ok(Dependent(BabyToiletry))
+    "Dependent", "Baby Doctor" -> Ok(Dependent(BabyDoctor))
+    "Dependent", "Baby Shopping" -> Ok(Dependent(BabyShopping))
     "Event", "Vacation" -> Ok(Event(Vacation))
     "Event", "Holiday" -> Ok(Event(Holiday))
     "Event", "Traveling" -> Ok(Event(Traveling))
@@ -252,6 +254,7 @@ pub fn transaction_category_from_string(
     "Income", "Bonus" -> Ok(Income(Bonus))
     "Income", "One Time Income" -> Ok(Income(OneTimeIncome))
     "Uncategorized", "Uncategorized" -> Ok(Uncategorized)
+    "Exclude", "Exclude" -> Ok(Exclude)
     _, _ -> Error(Nil)
   }
 }
