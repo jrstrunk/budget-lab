@@ -1,5 +1,6 @@
 import budget_lab/transaction_categories
 import budget_lab/types
+import gleam/io
 import gleam/list
 import gleam/regex
 import gleeunit
@@ -20,10 +21,15 @@ pub fn insert_transaction_categories_round_trip_test() {
       types.Expense,
     )
 
-  let assert Ok(reg) = regex.from_string("TEST MARKET")
+  let assert Ok(reg) =
+    regex.compile(
+      "TEST MARKET",
+      regex.Options(case_insensitive: True, multi_line: False),
+    )
 
   let assert Ok(categorizers) =
     transaction_categories.get_transaction_categories(conn)
+
   categorizers
   |> list.find(fn(categorizer) {
     categorizer

@@ -1,8 +1,10 @@
 import budget_lab/types
 import ext/dynamicx
 import ext/snagx
+import gleam/bool
 import gleam/dynamic
 import gleam/float
+import gleam/int
 import gleam/option
 import gleam/result
 import gleam/string
@@ -19,6 +21,7 @@ pub type Transaction {
     description: String,
     amount: Float,
     category: types.TransactionCategory,
+    category_override: Bool,
     transaction_type: types.TransactionType,
     account: option.Option(types.Account),
     note: option.Option(String),
@@ -54,6 +57,38 @@ pub type ManualTransaction {
   )
 }
 
+pub fn update_transaction(conn, transaction: Transaction) {
+  let #(category, subcategory) =
+    types.transaction_category_to_string(transaction.category)
+
+  sqlight.exec("UPDATE transactions SET 
+    date = '" <> datetime.to_string(transaction.date) <> "',
+    description = '" <> transaction.description <> "',
+    amount = " <> float.to_string(transaction.amount) <> ",
+    category = '" <> category <> "',
+    subcategory = '" <> subcategory <> "',
+    category_override = " <> int.to_string(bool.to_int(
+    transaction.category_override,
+  )) <> ",
+    transaction_type = '" <> types.transaction_type_to_string(
+    transaction.transaction_type,
+  ) <> "',
+    account = " <> case transaction.account {
+    option.Some(account) -> "'" <> types.account_to_string(account) <> "'"
+    option.None -> "NULL"
+  } <> ",
+    note = " <> case transaction.note {
+    option.Some(note) -> "'" <> note <> "'"
+    option.None -> "NULL"
+  } <> ",
+    active = " <> int.to_string(bool.to_int(transaction.active)) <> "
+    WHERE rowid = " <> int.to_string(transaction.id), on: conn)
+  |> snagx.from_error(
+    "Unable to update transaction in transactions db "
+    <> string.inspect(transaction),
+  )
+}
+
 pub fn insert_transaction(conn, transaction: Transaction) {
   let #(category, subcategory) =
     types.transaction_category_to_string(transaction.category)
@@ -68,6 +103,7 @@ pub fn insert_transaction(conn, transaction: Transaction) {
       float.to_string(transaction.amount),
       "'" <> category <> "'",
       "'" <> subcategory <> "'",
+      transaction.category_override |> bool.to_int |> int.to_string,
       "'"
         <> types.transaction_type_to_string(transaction.transaction_type)
         <> "'",
@@ -122,6 +158,7 @@ type TransactionRaw {
     amount: Float,
     category: String,
     subcategory: String,
+    category_override: Bool,
     transaction_type: types.TransactionType,
     account: option.Option(types.Account),
     note: option.Option(String),
@@ -131,7 +168,7 @@ type TransactionRaw {
 
 fn transaction_decoder(row) {
   case
-    dynamicx.decode10(
+    dynamicx.decode11(
       TransactionRaw,
       dynamic.element(0, dynamic.int),
       dynamic.element(1, datetime.from_dynamic_string),
@@ -139,10 +176,11 @@ fn transaction_decoder(row) {
       dynamic.element(3, dynamic.float),
       dynamic.element(4, dynamic.string),
       dynamic.element(5, dynamic.string),
-      dynamic.element(6, dynamicx.transaction_type),
-      dynamic.element(7, dynamic.optional(dynamicx.account)),
-      dynamic.element(8, dynamic.optional(dynamic.string)),
-      dynamic.element(9, sqlight.decode_bool),
+      dynamic.element(6, sqlight.decode_bool),
+      dynamic.element(7, dynamicx.transaction_type),
+      dynamic.element(8, dynamic.optional(dynamicx.account)),
+      dynamic.element(9, dynamic.optional(dynamic.string)),
+      dynamic.element(10, sqlight.decode_bool),
     )(row)
   {
     Ok(transaction_raw) -> {
@@ -159,6 +197,7 @@ fn transaction_decoder(row) {
             amount: transaction_raw.amount,
             description: transaction_raw.description,
             category: cate,
+            category_override: transaction_raw.category_override,
             transaction_type: transaction_raw.transaction_type,
             account: transaction_raw.account,
             note: transaction_raw.note,
@@ -223,6 +262,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount REAL NOT NULL,
   category TEXT NOT NULL,
   subcategory TEXT NOT NULL,
+  category_override INTEGER NOT NULL,
   transaction_type TEXT NOT NULL,
   account TEXT,
   note TEXT,
@@ -236,6 +276,7 @@ const transactions_columns = "
   amount,
   category,
   subcategory,
+  category_override,
   transaction_type,
   account,
   note,
@@ -246,13 +287,13 @@ const create_manual_transactions_table = "
 CREATE TABLE IF NOT EXISTS manual_transactions (
   date TEXT NOT NULL,
   amount REAL NOT NULL,
-  note TEXT
+  desc TEXT
 )"
 
 const manual_transactions_columns = "
   date,
   amount,
-  note
+  desc
 "
 
 pub fn connect_to_transactions_db() {
