@@ -65,7 +65,9 @@ pub type HealthSubcategory {
   Dentistry
   Doctor
   Supplements
+  Drugs
   HealthProduct
+  HealthService
   Hygiene
 }
 
@@ -146,7 +148,9 @@ pub fn transaction_category_to_string(category: TransactionCategory) {
     Health(Dentistry) -> #("Health", "Dentistry")
     Health(Doctor) -> #("Health", "Doctor")
     Health(Supplements) -> #("Health", "Supplements")
+    Health(Drugs) -> #("Health", "Drugs")
     Health(HealthProduct) -> #("Health", "Health Product")
+    Health(HealthService) -> #("Health", "Health Service")
     Health(Hygiene) -> #("Health", "Hygiene")
     Utility(Electricity) -> #("Utility", "Electricity")
     Utility(Water) -> #("Utility", "Water")
@@ -209,7 +213,9 @@ pub fn transaction_category_from_string(
     "Health", "Dentistry" -> Ok(Health(Dentistry))
     "Health", "Doctor" -> Ok(Health(Doctor))
     "Health", "Supplements" -> Ok(Health(Supplements))
+    "Health", "Drugs" -> Ok(Health(Drugs))
     "Health", "Health Product" -> Ok(Health(HealthProduct))
+    "Health", "Health Service" -> Ok(Health(HealthService))
     "Health", "Hygiene" -> Ok(Health(Hygiene))
     "Utility", "Electricity" -> Ok(Utility(Electricity))
     "Utility", "Water" -> Ok(Utility(Water))

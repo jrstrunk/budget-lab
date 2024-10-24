@@ -1,6 +1,5 @@
 import budget_lab/transaction_categories
 import budget_lab/types
-import gleam/io
 import gleam/list
 import gleam/regex
 import gleeunit
@@ -35,6 +34,7 @@ pub fn insert_transaction_categories_round_trip_test() {
     categorizer
     == transaction_categories.TransactionCategorizer(
       regex: reg,
+      regex_str: "TEST MARKET",
       category: types.Food(types.Groceries),
       transaction_type: types.Expense,
     )
@@ -42,6 +42,7 @@ pub fn insert_transaction_categories_round_trip_test() {
   |> should.equal(
     Ok(transaction_categories.TransactionCategorizer(
       regex: reg,
+      regex_str: "TEST MARKET",
       category: types.Food(types.Groceries),
       transaction_type: types.Expense,
     )),
@@ -66,4 +67,25 @@ pub fn insert_no_duplicates_test() {
     types.Expense,
   )
   |> should.be_error
+}
+
+pub fn largest_first_test() {
+  let conn = transaction_categories.connect_to_categories_test_db()
+
+  let really_long_regex_str =
+    "HELLO TEST MARKET THIS REGEX IS SO LONG THAT THERE SHOULD BE NO OTHERS THAT SURPASS ITS POWER"
+
+  let assert Ok(Nil) =
+    transaction_categories.add_transaction_category(
+      conn,
+      really_long_regex_str,
+      types.Food(types.Groceries),
+      types.Expense,
+    )
+
+  let assert Ok([categorizer1, ..]) =
+    transaction_categories.get_transaction_categories(conn)
+
+  categorizer1.regex_str
+  |> should.equal(really_long_regex_str)
 }

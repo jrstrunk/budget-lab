@@ -138,7 +138,7 @@ pub fn regex(dy) {
     Ok(regex_str) ->
       case
         regex.compile(
-          regex_str,
+          string.replace(regex_str, "&#39;", "'"),
           regex.Options(case_insensitive: True, multi_line: False),
         )
       {

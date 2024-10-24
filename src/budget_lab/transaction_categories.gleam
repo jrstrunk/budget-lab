@@ -4,6 +4,7 @@ import ext/dynamicx
 import ext/snagx
 import gleam/dynamic
 import gleam/float
+import gleam/int
 import gleam/list
 import gleam/option
 import gleam/regex
@@ -71,6 +72,7 @@ pub fn categorize(categorizers: List(TransactionCategorizer), desc) {
 pub type TransactionCategorizer {
   TransactionCategorizer(
     regex: regex.Regex,
+    regex_str: String,
     category: types.TransactionCategory,
     transaction_type: types.TransactionType,
   )
@@ -109,12 +111,18 @@ pub fn get_transaction_categories(conn) {
     with: [],
     expecting: transaction_category_decoder,
   )
+  |> result.map(fn(cats) {
+    list.sort(cats, fn(a, b) {
+      int.compare(string.length(b.regex_str), string.length(a.regex_str))
+    })
+  })
   |> snagx.from_error("Failed to get all transactions from transaction db ")
 }
 
 type TransactionCategorizerRaw {
   TransactionCategorizerRaw(
     regex: regex.Regex,
+    regex_str: String,
     category: String,
     subcategory: String,
     transaction_type: types.TransactionType,
@@ -123,9 +131,10 @@ type TransactionCategorizerRaw {
 
 fn transaction_category_decoder(row) {
   case
-    dynamic.decode4(
+    dynamic.decode5(
       TransactionCategorizerRaw,
       dynamic.element(0, dynamicx.regex),
+      dynamic.element(0, dynamic.string),
       dynamic.element(1, dynamic.string),
       dynamic.element(2, dynamic.string),
       dynamic.element(3, dynamicx.transaction_type),
@@ -133,13 +142,19 @@ fn transaction_category_decoder(row) {
   {
     Ok(TransactionCategorizerRaw(
       regex:,
+      regex_str:,
       category:,
       subcategory:,
       transaction_type:,
     )) ->
       case types.transaction_category_from_string(category, subcategory) {
         Ok(category) ->
-          Ok(TransactionCategorizer(regex:, category:, transaction_type:))
+          Ok(TransactionCategorizer(
+            regex:,
+            regex_str:,
+            category:,
+            transaction_type:,
+          ))
         Error(Nil) ->
           Error([
             dynamic.DecodeError(
@@ -273,6 +288,16 @@ INSERT OR IGNORE INTO transaction_categories VALUES
   ('THE LOCAL GRIND',                'Food',           'Eating Out',   'Expense'),
   ('ATHENIAN GRILL',                 'Food',           'Eating Out',   'Expense'),
   ('MAYLYNN S CREAMER',              'Food',           'Eating Out',   'Expense'),
+  ('YAMALLAMA GARAGE',               'Food',           'Eating Out',   'Expense'),
+  ('SNAKEROOT BOTANIC',              'Food',           'Eating Out',   'Expense'),
+  ('ROSIES PLACE MAIN STR',          'Food',           'Eating Out',   'Expense'),
+  ('DOLLIES FARM LLC',               'Food',           'Eating Out',   'Expense'),
+  ('THEFEED.COM',                    'Food',           'Eating Out',   'Expense'),
+  ('WEAVER MARKETS INC',             'Food',           'Eating Out',   'Expense'),
+  ('MILLIES LIVING CAFE',            'Food',           'Eating Out',   'Expense'),
+  ('VINNY'S ITALIAN G',              'Food',           'Eating Out',   'Expense'),
+  ('BRIDGE STREET CAFE',             'Food',           'Eating Out',   'Expense'),
+  ('STARBUCKS',                      'Food',           'Eating Out',   'Expense'),
   ('Bellas of bristol', 'Food', 'Eating Out', 'Expense'),
   ('Wendy&#39;s', 'Food', 'Eating Out', 'Expense'),
   ('Javateas gourmet coffe', 'Food', 'Eating Out', 'Expense'),
@@ -285,7 +310,7 @@ INSERT OR IGNORE INTO transaction_categories VALUES
   ('em&#39;s sourdough bre', 'Food', 'Eating Out', 'Expense'),
   ('La Carreta', 'Food', 'Eating Out', 'Expense'),
   ('Mosbys pub', 'Food', 'Eating Out', 'Expense'),
-  ('Bucka bagels', 'Food', 'Eating Out', 'Expense'),
+  ('bagel',                          'Food',           'Eating Out',   'Expense'),
   ('aunt lydias pretze', 'Food', 'Eating Out', 'Expense'),
   ('sweet willows crea', 'Food', 'Eating Out', 'Expense'),
   ('white hart cafe', 'Food', 'Eating Out', 'Expense'),
@@ -370,23 +395,25 @@ INSERT OR IGNORE INTO transaction_categories VALUES
   ('Framework', 'Discretionary', 'Office', 'Expense'),
   ('Newegg', 'Discretionary', 'Office', 'Expense'),
   ('Fosiaudio', 'Discretionary', 'Office', 'Expense'),
-  ('QUALITY INN',                    'Event',         'Traveling',      'Expense'),
-  ('Frontier abzepm',                'Event',         'Traveling',      'Expense'),
-  ('Frontier airlines',              'Event',         'Traveling',      'Expense'),
-  ('Best western',                   'Event',         'Traveling',      'Expense'),
-  ('Airbnb',                         'Event',         'Traveling',      'Expense'),
-  ('La Quinta',                      'Event',         'Traveling',      'Expense'),
-  ('SPOTIFY',                        'Discretionary', 'Music',          'Expense'),
-  ('PRIME VIDEO',                    'Discretionary', 'Entertainment',  'Expense'),
-  ('Movie',                          'Discretionary', 'Entertainment',  'Expense'),
-  ('Cinema',                         'Discretionary', 'Entertainment',  'Expense'),
-  ('Steam\\s*Games',                 'Discretionary', 'Entertainment',  'Expense'),
-  ('Diaper',                         'Dependent',     'Baby Toiletry',  'Expense'),
-  ('RebelStork',                     'Dependent',     'Baby Product',   'Expense'),
-  ('AirDoctor',                      'Health',        'Health Product', 'Expense'),
-  ('Clearly\\s*Filtered',            'Health',        'Health Product', 'Expense'),
-  ('Comcast',                        'Utility',       'Internet',       'Expense'),
-  ('First\\s*Energy',                'Utility',       'Electricity',    'Expense'),
-  ('Columbia\\s*Gas',                'Utility',       'Gas (Home)',     'Expense'),
-  ('Advance Auto Parts')             'Transportation','Car Maintenance', 'Expense')
+  ('QUALITY INN',                'Event',          'Traveling',       'Expense'),
+  ('Frontier abzepm',            'Event',          'Traveling',       'Expense'),
+  ('Frontier airlines',          'Event',          'Traveling',       'Expense'),
+  ('Best western',               'Event',          'Traveling',       'Expense'),
+  ('Airbnb',                     'Event',          'Traveling',       'Expense'),
+  ('La Quinta',                  'Event',          'Traveling',       'Expense'),
+  ('SPOTIFY',                    'Discretionary',  'Music',           'Expense'),
+  ('PRIME VIDEO',                'Discretionary',  'Entertainment',   'Expense'),
+  ('Movie',                      'Discretionary',  'Entertainment',   'Expense'),
+  ('Cinema',                     'Discretionary',  'Entertainment',   'Expense'),
+  ('Steam\\s*Games',             'Discretionary',  'Entertainment',   'Expense'),
+  ('Diaper',                     'Dependent',      'Baby Toiletry',   'Expense'),
+  ('RebelStork',                 'Dependent',      'Baby Product',    'Expense'),
+  ('AirDoctor',                  'Health',         'Health Product',  'Expense'),
+  ('Clearly\\s*Filtered',        'Health',         'Health Product',  'Expense'),
+  ('Comcast',                    'Utility',        'Internet',        'Expense'),
+  ('First\\s*Energy',            'Utility',        'Electricity',     'Expense'),
+  ('AMER ELECT PWR',             'Utility',        'Electricity',     'Expense'),
+  ('Columbia\\s*Gas',            'Utility',        'Gas (Home)',      'Expense'),
+  ('FIRSTMARK',                  'Education',      'Student Debt',    'External'),
+  ('Advance Auto Parts',         'Transportation', 'Car Maintenance', 'Expense')
 "
