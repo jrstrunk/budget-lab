@@ -1,4 +1,4 @@
-pub const data_dir = "./data"
+pub const data_base = "./data/budget_lab.db"
 
 pub type Account {
   SoFiBankingJoint

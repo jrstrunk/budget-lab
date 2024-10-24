@@ -1,3 +1,4 @@
+import budget_lab/database
 import budget_lab/transactions
 import budget_lab/types
 import gleam/option
@@ -10,7 +11,7 @@ pub fn main() {
 }
 
 pub fn insert_transactions_round_trip_test() {
-  let conn = transactions.connect_to_transactions_test_db()
+  let conn = database.connect_to_transactions_test_db()
 
   let transaction =
     transactions.Transaction(
@@ -78,7 +79,7 @@ pub fn insert_transactions_round_trip_test() {
 }
 
 pub fn insert_manual_transactions_round_trip_test() {
-  let conn = transactions.connect_to_transactions_test_db()
+  let conn = database.connect_to_transactions_test_db()
 
   let transaction =
     transactions.ManualTransaction(
@@ -121,7 +122,7 @@ pub fn insert_manual_transactions_round_trip_test() {
 }
 
 pub fn update_transactions_round_trip_test() {
-  let conn = transactions.connect_to_transactions_test_db()
+  let conn = database.connect_to_transactions_test_db()
 
   let transaction =
     transactions.Transaction(

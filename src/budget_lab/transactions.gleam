@@ -1,3 +1,4 @@
+import budget_lab/database
 import budget_lab/types
 import ext/dynamicx
 import ext/snagx
@@ -6,9 +7,7 @@ import gleam/dynamic
 import gleam/float
 import gleam/int
 import gleam/option
-import gleam/result
 import gleam/string
-import simplifile
 import sqlight
 import tempo
 import tempo/date
@@ -95,7 +94,7 @@ pub fn insert_transaction(conn, transaction: Transaction) {
 
   sqlight.exec(
     "INSERT INTO transactions ("
-      <> transactions_columns
+      <> database.transactions_columns
       <> ") VALUES ("
       <> [
       "'" <> datetime.to_string(transaction.date) <> "'",
@@ -130,7 +129,7 @@ pub fn insert_transaction(conn, transaction: Transaction) {
 pub fn insert_manual_transaction(conn, transaction: ManualTransaction) {
   sqlight.exec(
     "INSERT INTO manual_transactions ("
-      <> manual_transactions_columns
+      <> database.manual_transactions_columns
       <> ") VALUES ("
       <> [
       "'" <> datetime.to_string(transaction.date) <> "'",
@@ -231,7 +230,7 @@ fn manual_transaction_decoder(row) {
 
 pub fn get_all_transactions(conn) {
   sqlight.query(
-    "SELECT rowid, " <> transactions_columns <> " FROM transactions",
+    "SELECT rowid, " <> database.transactions_columns <> " FROM transactions",
     on: conn,
     with: [],
     expecting: transaction_decoder,
@@ -242,7 +241,7 @@ pub fn get_all_transactions(conn) {
 pub fn get_all_manual_transactions(conn) {
   sqlight.query(
     "SELECT rowid, "
-      <> manual_transactions_columns
+      <> database.manual_transactions_columns
       <> " FROM manual_transactions",
     on: conn,
     with: [],
@@ -251,81 +250,4 @@ pub fn get_all_manual_transactions(conn) {
   |> snagx.from_error(
     "Failed to get all manual transactions from transaction db ",
   )
-}
-
-const transactions_db = "transactions.db"
-
-const create_transactions_table = "
-CREATE TABLE IF NOT EXISTS transactions (
-  date TEXT NOT NULL,
-  description TEXT NOT NULL,
-  amount REAL NOT NULL,
-  category TEXT NOT NULL,
-  subcategory TEXT NOT NULL,
-  category_override INTEGER NOT NULL,
-  transaction_type TEXT NOT NULL,
-  account TEXT,
-  note TEXT,
-  active INTEGER NOT NULL,
-  PRIMARY KEY (date, description, amount)
-)"
-
-const transactions_columns = "
-  date,
-  description,
-  amount,
-  category,
-  subcategory,
-  category_override,
-  transaction_type,
-  account,
-  note,
-  active
-"
-
-const create_manual_transactions_table = "
-CREATE TABLE IF NOT EXISTS manual_transactions (
-  date TEXT NOT NULL,
-  amount REAL NOT NULL,
-  desc TEXT
-)"
-
-const manual_transactions_columns = "
-  date,
-  amount,
-  desc
-"
-
-pub fn connect_to_transactions_db() {
-  let _ = simplifile.create_directory_all(types.data_dir)
-
-  let transactions_db_path = types.data_dir <> "/" <> transactions_db
-
-  use conn <- result.map(
-    sqlight.open("file:" <> transactions_db_path)
-    |> snagx.from_error(
-      "Failed to connect to transactions db at " <> transactions_db_path,
-    ),
-  )
-
-  let _ = sqlight.exec(create_transactions_table, on: conn)
-  let _ = sqlight.exec(create_manual_transactions_table, on: conn)
-
-  conn
-}
-
-pub fn connect_to_transactions_test_db() {
-  let _ = simplifile.create_directory_all(types.data_dir)
-
-  let transactions_db_path = types.data_dir <> "/transactions_test.db"
-
-  let assert Ok(conn) = sqlight.open("file:" <> transactions_db_path)
-
-  let _ = sqlight.exec("DROP TABLE transactions", on: conn)
-  let _ = sqlight.exec(create_transactions_table, on: conn)
-
-  let _ = sqlight.exec("DROP TABLE manual_transactions", on: conn)
-  let _ = sqlight.exec(create_manual_transactions_table, on: conn)
-
-  conn
 }

@@ -1,3 +1,4 @@
+import budget_lab/database
 import budget_lab/transaction_categories
 import budget_lab/types
 import gleam/list
@@ -10,7 +11,7 @@ pub fn main() {
 }
 
 pub fn insert_transaction_categories_round_trip_test() {
-  let conn = transaction_categories.connect_to_categories_test_db()
+  let conn = database.connect_to_categories_test_db()
 
   let assert Ok(Nil) =
     transaction_categories.add_transaction_category(
@@ -50,7 +51,7 @@ pub fn insert_transaction_categories_round_trip_test() {
 }
 
 pub fn insert_no_duplicates_test() {
-  let conn = transaction_categories.connect_to_categories_test_db()
+  let conn = database.connect_to_categories_test_db()
 
   let assert Ok(Nil) =
     transaction_categories.add_transaction_category(
@@ -70,7 +71,7 @@ pub fn insert_no_duplicates_test() {
 }
 
 pub fn largest_first_test() {
-  let conn = transaction_categories.connect_to_categories_test_db()
+  let conn = database.connect_to_categories_test_db()
 
   let really_long_regex_str =
     "HELLO TEST MARKET THIS REGEX IS SO LONG THAT THERE SHOULD BE NO OTHERS THAT SURPASS ITS POWER"
