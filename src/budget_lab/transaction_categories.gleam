@@ -34,7 +34,10 @@ pub fn ingest_csv(conn, csv) {
       [date, description, amount, ..] -> {
         use date <- result.try(date.parse_any(date))
         use amount <- result.try(
-          amount |> string.replace("$", "") |> float.parse,
+          amount
+          |> string.replace("$", "")
+          |> string.replace(",", "")
+          |> float.parse,
         )
         let category = categorize(categorizers, description)
 
@@ -255,8 +258,7 @@ INSERT OR IGNORE INTO transaction_categories VALUES
   ('Watermelon',                     'Food',           'Groceries',    'Expense'),
   ('Dutch way farm',                 'Food',           'Groceries',    'Expense'),
   ('Wegmans',                        'Food',           'Groceries',    'Expense'),
-  ('Ebenezer&#39;s',                 'Food',           'Groceries',    'Expense'),
-  ('Ebenezers',                      'Food',           'Groceries',    'Expense'),
+  ('Ebenezer.{0,1}s',                'Food',           'Groceries',    'Expense'),
   ('Beezers',                        'Food',           'Groceries',    'Expense'),
   ('Sonnewald natural food',         'Food',           'Groceries',    'Expense'),
   ('FRESH MARKE',                    'Food',           'Groceries',    'Expense'),
@@ -415,5 +417,7 @@ INSERT OR IGNORE INTO transaction_categories VALUES
   ('AMER ELECT PWR',             'Utility',        'Electricity',     'Expense'),
   ('Columbia\\s*Gas',            'Utility',        'Gas (Home)',      'Expense'),
   ('FIRSTMARK',                  'Education',      'Student Debt',    'External'),
+  ('Supermaven',                 'Professional',   'Software Development', 'Expense'),
+  ('Tello us',                   'Utility',        'Internet',        'Expense'),
   ('Advance Auto Parts',         'Transportation', 'Car Maintenance', 'Expense')
 "
