@@ -1,58 +1,68 @@
 import ext/snagx
+import fmglee as fmt
 import gleam/result
 import simplifile
 import sqlight
+import tempo/date
 
-const db_path = "./data/budget_lab.db"
+const db_dir = "data"
+
+const db_name = "budget_lab.db"
 
 pub fn connect() {
-  let _ = simplifile.create_directory_all(db_path)
+  let _ = simplifile.create_directory_all(db_dir)
 
-  use conn <- result.map(
+  let db_path = db_dir <> "/" <> db_name
+
+  use conn <- result.try(
     sqlight.open("file:" <> db_path)
     |> snagx.from_error("Failed to connect to database at " <> db_path),
   )
 
-  let _ = sqlight.exec(create_transactions_table, on: conn)
-  let _ = sqlight.exec(create_manual_transactions_table, on: conn)
-  let _ = sqlight.exec(create_transaction_categories_table, on: conn)
+  use Nil <- result.try(
+    sqlight.exec(create_transactions_table, on: conn)
+    |> snagx.from_error("Unable to create transactions table"),
+  )
 
-  let _ = sqlight.exec(insert_static_transaction_categories, on: conn)
+  use Nil <- result.try(
+    sqlight.exec(create_manual_transactions_table, on: conn)
+    |> snagx.from_error("Unable to create manual transactions table"),
+  )
 
-  conn
+  use Nil <- result.try(
+    sqlight.exec(create_categories_table, on: conn)
+    |> snagx.from_error("Unable to create categories table"),
+  )
+
+  use Nil <- result.try(
+    sqlight.exec(create_account_balances_table, on: conn)
+    |> snagx.from_error("Unable to create account balances table"),
+  )
+
+  use Nil <- result.try(
+    sqlight.exec(create_account_categories_table, on: conn)
+    |> snagx.from_error("Unable to create account categories table"),
+  )
+
+  use Nil <- result.try(
+    sqlight.exec(insert_static_categories, on: conn)
+    |> snagx.from_error("Unable to insert static categories"),
+  )
+
+  Ok(conn)
 }
 
 pub fn connect_to_transactions_test_db() {
-  let _ = simplifile.create_directory_all("data")
-
-  let transactions_db_path = "data/transactions_test.db"
-
-  let assert Ok(conn) = sqlight.open("file:" <> transactions_db_path)
-
-  let _ = sqlight.exec("DROP TABLE transactions", on: conn)
-  let _ = sqlight.exec(create_transactions_table, on: conn)
-
-  let _ = sqlight.exec("DROP TABLE manual_transactions", on: conn)
-  let _ = sqlight.exec(create_manual_transactions_table, on: conn)
-
+  let assert Ok(conn) = sqlight.open(":memory:")
+  let assert Ok(Nil) = sqlight.exec(create_transactions_table, on: conn)
+  let assert Ok(Nil) = sqlight.exec(create_manual_transactions_table, on: conn)
   conn
 }
 
 pub fn connect_to_categories_test_db() {
-  let _ = simplifile.create_directory_all("data")
-
-  let categories_db_path = "data/transaction_categories_test.db"
-
-  let assert Ok(conn) =
-    sqlight.open("file:" <> categories_db_path)
-    |> snagx.from_error(
-      "Failed to connect to transactions db at " <> categories_db_path,
-    )
-
-  let _ = sqlight.exec("DROP TABLE transaction_categories", on: conn)
-  let _ = sqlight.exec(create_transaction_categories_table, on: conn)
-  let _ = sqlight.exec(insert_static_transaction_categories, on: conn)
-
+  let assert Ok(conn) = sqlight.open(":memory:")
+  let assert Ok(Nil) = sqlight.exec(create_categories_table, on: conn)
+  let assert Ok(Nil) = sqlight.exec(insert_static_categories, on: conn)
   conn
 }
 
@@ -97,7 +107,62 @@ pub const manual_transactions_columns = "
   desc
 "
 
-const create_transaction_categories_table = "
+const create_account_balances_table = "
+CREATE TABLE IF NOT EXISTS account_balances (
+  date TEXT NOT NULL,
+  account_id INTEGER NOT NULL,
+  label TEXT NOT NULL,
+  balance REAL NOT NULL,
+  PRIMARY KEY (date, account_id)
+)"
+
+const create_account_categories_table = "
+CREATE TABLE IF NOT EXISTS account_categories (
+  account_id INTEGER NOT NULL,
+  category TEXT NOT NULL,
+  PRIMARY KEY (account_id)
+)"
+
+pub fn form_insert_account_balance(date, account_id, name, amount) {
+  fmt.sprintf(
+    "INSERT INTO account_balances (
+      date,
+      account_id,
+      label,
+      balance
+    ) VALUES (
+      %s,
+      %d,
+      %s,
+      %f
+    )",
+    [
+      fmt.S(date |> date.to_string),
+      fmt.D(account_id),
+      fmt.S(name),
+      fmt.F(amount),
+    ],
+  )
+}
+
+pub fn form_get_account_id(label) {
+  fmt.sprintf(
+    "SELECT account_id 
+    FROM account_balances 
+    WHERE label = %s 
+    ORDER BY row_num DESC
+    LIMIT 1",
+    [fmt.S(label)],
+  )
+}
+
+pub const get_all_account_balances = "
+SELECT b.date, b.account_id, b.label, b.balance, c.category
+FROM account_balances b
+LEFT JOIN account_categories c ON b.account_id = c.account_id
+"
+
+const create_categories_table = "
 CREATE TABLE IF NOT EXISTS transaction_categories (
   regex TEXT NOT NULL,
   category TEXT NOT NULL,
@@ -113,7 +178,7 @@ pub const transaction_categories_columns = "
   transaction_type
 "
 
-const insert_static_transaction_categories = "
+const insert_static_categories = "
 INSERT OR IGNORE INTO transaction_categories VALUES
   ('SAUBELS MARKET',                 'Food',           'Groceries',    'Expense'),
   ('ALDI',                           'Food',           'Groceries',    'Expense'),
@@ -185,7 +250,7 @@ INSERT OR IGNORE INTO transaction_categories VALUES
   ('THEFEED.COM',                    'Food',           'Eating Out',   'Expense'),
   ('WEAVER MARKETS INC',             'Food',           'Eating Out',   'Expense'),
   ('MILLIES LIVING CAFE',            'Food',           'Eating Out',   'Expense'),
-  ('VINNY'S ITALIAN G',              'Food',           'Eating Out',   'Expense'),
+  ('VINNY&#39;S ITALIAN G',          'Food',           'Eating Out',   'Expense'),
   ('BRIDGE STREET CAFE',             'Food',           'Eating Out',   'Expense'),
   ('STARBUCKS',                      'Food',           'Eating Out',   'Expense'),
   ('Bellas of bristol', 'Food', 'Eating Out', 'Expense'),

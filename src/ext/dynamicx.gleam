@@ -1,8 +1,10 @@
 import budget_lab/types
+import decode/zero
 import gleam/dynamic.{type Decoder, type Dynamic}
 import gleam/list
 import gleam/regex
 import gleam/string
+import tempo/date
 
 fn all_errors(
   result: Result(a, List(dynamic.DecodeError)),
@@ -150,4 +152,41 @@ pub fn regex(dy) {
       }
     Error(e) -> Error(e)
   }
+}
+
+pub fn account_balance_decoder(row) {
+  let date_decoder = {
+    use decoded_string <- zero.then(zero.string)
+    case date.from_string(decoded_string) {
+      Ok(date) -> zero.success(date)
+      Error(..) ->
+        zero.failure(date.literal("2024-07-08"), "Unable to decode date")
+    }
+  }
+
+  let category_decoder = {
+    use decoded_string <- zero.then(zero.string)
+    case types.account_balance_category_from_string(decoded_string) {
+      Ok(category) -> zero.success(category)
+      Error(Nil) -> zero.failure(types.Other, "Unable to decode category")
+    }
+  }
+
+  let account_balance_decoder = {
+    use date <- zero.field(0, date_decoder)
+    use account_id <- zero.field(1, zero.int)
+    use name <- zero.field(2, zero.string)
+    use amount <- zero.field(3, zero.float)
+    use category <- zero.field(4, category_decoder)
+
+    zero.success(types.AccountBalance(
+      date:,
+      account_id:,
+      name:,
+      category:,
+      amount:,
+    ))
+  }
+
+  zero.run(row, account_balance_decoder)
 }

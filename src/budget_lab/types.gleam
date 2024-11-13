@@ -1,4 +1,42 @@
+import tempo
+
 pub const data_base = "./data/budget_lab.db"
+
+pub type AccountBalance {
+  AccountBalance(
+    date: tempo.Date,
+    account_id: Int,
+    name: String,
+    category: AccountBalanceCategory,
+    amount: Float,
+  )
+}
+
+pub type AccountBalanceCategory {
+  Cash
+  Investment
+  Debt
+  Other
+}
+
+pub fn account_balance_category_to_string(category: AccountBalanceCategory) {
+  case category {
+    Cash -> "Cash"
+    Investment -> "Investment"
+    Debt -> "Debt"
+    Other -> "Other"
+  }
+}
+
+pub fn account_balance_category_from_string(string: String) {
+  case string {
+    "Cash" -> Ok(Cash)
+    "Investment" -> Ok(Investment)
+    "Debt" -> Ok(Debt)
+    "Other" -> Ok(Other)
+    _ -> Error(Nil)
+  }
+}
 
 pub type Account {
   SoFiBankingJoint
